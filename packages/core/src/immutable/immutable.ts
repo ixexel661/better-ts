@@ -3,7 +3,7 @@ import {
 	deepFreeze,
 } from "../deep-readonly/deep-readonly.js";
 
-// Phantom brand — declared, never emitted, not exported, so an `Immutable<T>`
+// Phantom brand: declared, never emitted, not exported, so an `Immutable<T>`
 // can only be produced through `immutable()` below.
 declare const immutableBrand: unique symbol;
 
@@ -16,7 +16,7 @@ declare const immutableBrand: unique symbol;
  * ```ts
  * function render(cfg: Immutable<Config>) {} // guaranteed runtime-frozen
  * render(immutable(config))                  // ok
- * render(config)                             // type error — not branded
+ * render(config)                             // type error: not branded
  * ```
  */
 export type Immutable<T> = DeepReadonly<T> & {

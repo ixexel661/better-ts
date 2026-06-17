@@ -1,6 +1,6 @@
 # better-ts
 
-A better standard library for TypeScript — `Option`, `Result`, `Validated`,
+A better standard library for TypeScript: `Option`, `Result`, `Validated`,
 `NonEmptyArray`, `DeepReadonly`, `Immutable`, `Lazy`, `Brand` and `Iter`.
 **Zero dependency.** ESM only.
 
@@ -14,7 +14,7 @@ pnpm add @better-ts/core
 ```
 
 ```ts
-import { Some, None, Ok, Err } from 'better-ts'
+import { Option, Result } from 'better-ts'
 ```
 
 For the full documentation see

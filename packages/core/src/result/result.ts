@@ -1,44 +1,43 @@
-import type { Option } from "../option/option.js";
-import { None, Some } from "../option/option.js";
+import { Option } from "../option/option.js";
 
 /**
- * Pattern for {@link Result.match}.
+ * Handlers for {@link Result.match}.
  */
 export interface ResultMatch<T, E, U> {
-	ok: (value: T) => U;
-	err: (error: E) => U;
+	success: (value: T) => U;
+	error: (error: E) => U;
 }
 
 /**
- * Represents either a success ({@link Ok}) holding a value or a failure
- * ({@link Err}) holding an error value. A type-safe alternative to `throw` that
- * makes errors visible in the type system.
+ * Either a success ({@link Success}) holding a value, or a failure
+ * ({@link Failure}) holding an error. A type-safe alternative to `throw` that
+ * puts the error in the type signature where the caller can see it.
  *
  * @example
  * ```ts
  * const parsed = Result.tryCatch(() => JSON.parse(input))
  *   .map((data) => data.value)
- *   .unwrapOr(0)
+ *   .getOrElse(() => 0)
  * ```
  */
 export abstract class Result<T, E> {
-	/** Discriminator used to tell the variants apart. */
-	abstract readonly _tag: "Ok" | "Err";
+	/** Discriminator that tells the two variants apart. */
+	abstract readonly _tag: "Success" | "Failure";
 
 	// --- Constructors / interop -------------------------------------------
 
-	/** Creates an {@link Ok}. */
-	static ok<T, E = never>(value: T): Result<T, E> {
-		return new OkImpl(value);
+	/** Wraps a success value. */
+	static success<T, E = never>(value: T): Result<T, E> {
+		return new SuccessImpl(value);
 	}
 
-	/** Creates an {@link Err}. */
-	static err<T = never, E = never>(error: E): Result<T, E> {
-		return new ErrImpl(error);
+	/** Wraps an error value. */
+	static error<T = never, E = never>(error: E): Result<T, E> {
+		return new FailureImpl(error);
 	}
 
 	/**
-	 * Runs `fn` and captures thrown errors as `Err`.
+	 * Runs `fn` and captures anything it throws as a failure.
 	 *
 	 * @example
 	 * ```ts
@@ -47,116 +46,114 @@ export abstract class Result<T, E> {
 	 */
 	static tryCatch<T>(fn: () => T): Result<T, unknown> {
 		try {
-			return new OkImpl(fn());
+			return new SuccessImpl(fn());
 		} catch (error) {
-			return new ErrImpl(error);
+			return new FailureImpl(error);
 		}
 	}
 
 	/**
-	 * Awaits a promise and wraps the outcome: fulfilled → `Ok`,
-	 * rejected → `Err`.
+	 * Awaits a promise: a fulfilled promise becomes a success, a rejected one a
+	 * failure.
 	 */
 	static async fromPromise<T>(
 		promise: PromiseLike<T>,
 	): Promise<Result<T, unknown>> {
 		try {
-			return new OkImpl(await promise);
+			return new SuccessImpl(await promise);
 		} catch (error) {
-			return new ErrImpl(error);
+			return new FailureImpl(error);
 		}
 	}
 
-	/** `Ok(value)` for non-nullish values, otherwise `Err(error)`. */
+	/** A success for non-nullish values, otherwise a failure carrying `error`. */
 	static fromNullable<T, E>(
 		value: T | null | undefined,
 		error: E,
 	): Result<NonNullable<T>, E> {
 		return value === null || value === undefined
-			? new ErrImpl(error)
-			: new OkImpl(value as NonNullable<T>);
+			? new FailureImpl(error)
+			: new SuccessImpl(value as NonNullable<T>);
 	}
 
 	// --- Type guards ------------------------------------------------------
 
-	/** `true` on success (narrows to {@link Ok}). */
-	abstract isOk(): this is Ok<T, E>;
+	/** `true` on success (narrows to {@link Success}). */
+	abstract isSuccess(): this is Success<T, E>;
 
-	/** `true` on failure (narrows to {@link Err}). */
-	abstract isErr(): this is Err<T, E>;
+	/** `true` on failure (narrows to {@link Failure}). */
+	abstract isError(): this is Failure<T, E>;
 
 	// --- Transformation ---------------------------------------------------
 
-	/** Transforms the success value; `Err` is left unchanged. */
+	/** Transforms the success value; a failure is left unchanged. */
 	abstract map<U>(fn: (value: T) => U): Result<U, E>;
 
-	/** Transforms the error value; `Ok` is left unchanged. */
+	/** Transforms the error value; a success is left unchanged. */
 	abstract mapErr<F>(fn: (error: E) => F): Result<T, F>;
 
 	/** Like {@link map}, but `fn` returns a `Result` itself. */
 	abstract flatMap<U>(fn: (value: T) => Result<U, E>): Result<U, E>;
 
-	/** Alias for {@link flatMap}. */
-	andThen<U>(fn: (value: T) => Result<U, E>): Result<U, E> {
-		return this.flatMap(fn);
-	}
-
-	/** Runs `fn` for the success value (side effect), returns `this`. */
+	/** Runs `fn` for the success value (side effect) and returns `this`. */
 	abstract tap(fn: (value: T) => void): this;
 
-	/** Runs `fn` for the error value (side effect), returns `this`. */
+	/** Runs `fn` for the error value (side effect) and returns `this`. */
 	abstract tapErr(fn: (error: E) => void): this;
 
 	// --- Extraction -------------------------------------------------------
 
 	/**
-	 * Returns the success value or throws the error.
-	 * @throws the contained error `E` if `Err`.
+	 * Returns the success value, or throws the error.
+	 * @throws the contained error `E` on failure.
 	 */
-	abstract unwrap(): T;
+	abstract getOrThrow(): T;
 
 	/**
-	 * Returns the error value or throws if `Ok`.
-	 * @throws {Error} if `Ok`.
+	 * Returns the error value, or throws on success.
+	 * @throws {Error} on success.
 	 */
-	abstract unwrapErr(): E;
+	abstract getErrorOrThrow(): E;
 
-	/** Success value or `fallback`. */
-	abstract unwrapOr(fallback: T): T;
+	/** Returns the success value, or `onError(error)` on failure. */
+	abstract getOrElse(onError: (error: E) => T): T;
 
-	/** Success value or the result of `fn` (receives the error). */
-	abstract unwrapOrElse(fn: (error: E) => T): T;
+	/** Returns the success value, or `null` on failure. */
+	abstract getOrNull(): T | null;
 
-	/** Branches depending on the variant. */
+	/** Returns the success value, or `undefined` on failure. */
+	abstract getOrUndefined(): T | undefined;
+
+	/** Branches on the variant. */
 	abstract match<U>(cases: ResultMatch<T, E, U>): U;
 
 	// --- Interop → Option -------------------------------------------------
 
-	/** `Ok -> Some(value)`, `Err -> None` (discards the error). */
-	abstract ok(): Option<T>;
+	/** The success value as an `Option` (a failure becomes empty). */
+	abstract toOption(): Option<T>;
 
-	/** `Err -> Some(error)`, `Ok -> None`. */
-	abstract err(): Option<E>;
+	/** The error value as an `Option` (a success becomes empty). */
+	abstract getError(): Option<E>;
 }
 
-/** Success variant of {@link Result}. */
-class OkImpl<T, E> extends Result<T, E> {
-	override readonly _tag = "Ok" as const;
+/** The success variant of {@link Result}. */
+class SuccessImpl<T, E> extends Result<T, E> {
+	override readonly _tag = "Success" as const;
 
 	constructor(readonly value: T) {
 		super();
 	}
 
-	override isOk(): this is Ok<T, E> {
+	override isSuccess(): this is Success<T, E> {
 		return true;
 	}
 
-	override isErr(): this is Err<T, E> {
+	override isError(): this is Failure<T, E> {
 		return false;
 	}
 
 	override map<U>(fn: (value: T) => U): Result<U, E> {
-		return new OkImpl(fn(this.value));
+		return new SuccessImpl(fn(this.value));
 	}
 
 	override mapErr<F>(_fn: (error: E) => F): Result<T, F> {
@@ -176,48 +173,52 @@ class OkImpl<T, E> extends Result<T, E> {
 		return this;
 	}
 
-	override unwrap(): T {
+	override getOrThrow(): T {
 		return this.value;
 	}
 
-	override unwrapErr(): never {
-		throw new Error("Result.unwrapErr() called on Ok");
+	override getErrorOrThrow(): never {
+		throw new Error("Result.getErrorOrThrow() called on a successful Result");
 	}
 
-	override unwrapOr(_fallback: T): T {
+	override getOrElse(_onError: (error: E) => T): T {
 		return this.value;
 	}
 
-	override unwrapOrElse(_fn: (error: E) => T): T {
+	override getOrNull(): T | null {
+		return this.value;
+	}
+
+	override getOrUndefined(): T | undefined {
 		return this.value;
 	}
 
 	override match<U>(cases: ResultMatch<T, E, U>): U {
-		return cases.ok(this.value);
+		return cases.success(this.value);
 	}
 
-	override ok(): Option<T> {
-		return Some(this.value);
+	override toOption(): Option<T> {
+		return Option.value(this.value);
 	}
 
-	override err(): Option<E> {
-		return None();
+	override getError(): Option<E> {
+		return Option.empty();
 	}
 }
 
-/** Failure variant of {@link Result}. */
-class ErrImpl<T, E> extends Result<T, E> {
-	override readonly _tag = "Err" as const;
+/** The failure variant of {@link Result}. */
+class FailureImpl<T, E> extends Result<T, E> {
+	override readonly _tag = "Failure" as const;
 
 	constructor(readonly error: E) {
 		super();
 	}
 
-	override isOk(): this is Ok<T, E> {
+	override isSuccess(): this is Success<T, E> {
 		return false;
 	}
 
-	override isErr(): this is Err<T, E> {
+	override isError(): this is Failure<T, E> {
 		return true;
 	}
 
@@ -226,7 +227,7 @@ class ErrImpl<T, E> extends Result<T, E> {
 	}
 
 	override mapErr<F>(fn: (error: E) => F): Result<T, F> {
-		return new ErrImpl(fn(this.error));
+		return new FailureImpl(fn(this.error));
 	}
 
 	override flatMap<U>(_fn: (value: T) => Result<U, E>): Result<U, E> {
@@ -242,61 +243,41 @@ class ErrImpl<T, E> extends Result<T, E> {
 		return this;
 	}
 
-	override unwrap(): never {
+	override getOrThrow(): never {
 		throw this.error;
 	}
 
-	override unwrapErr(): E {
+	override getErrorOrThrow(): E {
 		return this.error;
 	}
 
-	override unwrapOr(fallback: T): T {
-		return fallback;
+	override getOrElse<U>(onError: (error: E) => U): U {
+		return onError(this.error);
 	}
 
-	override unwrapOrElse(fn: (error: E) => T): T {
-		return fn(this.error);
+	override getOrNull(): null {
+		return null;
+	}
+
+	override getOrUndefined(): undefined {
+		return undefined;
 	}
 
 	override match<U>(cases: ResultMatch<T, E, U>): U {
-		return cases.err(this.error);
+		return cases.error(this.error);
 	}
 
-	override ok(): Option<T> {
-		return None();
+	override toOption(): Option<T> {
+		return Option.empty();
 	}
 
-	override err(): Option<E> {
-		return Some(this.error);
+	override getError(): Option<E> {
+		return Option.value(this.error);
 	}
 }
 
-/** The `Ok` type: a successful {@link Result}. */
-export type Ok<T, E = never> = OkImpl<T, E>;
+/** The `Success` type: a successful {@link Result}. */
+export type Success<T, E = never> = SuccessImpl<T, E>;
 
-/** The `Err` type: a failed {@link Result}. */
-export type Err<T, E = never> = ErrImpl<T, E>;
-
-/**
- * Creates an {@link Ok}.
- *
- * @example
- * ```ts
- * Ok(42) // Result<number, never>
- * ```
- */
-export function Ok<T, E = never>(value: T): Result<T, E> {
-	return new OkImpl(value);
-}
-
-/**
- * Creates an {@link Err}.
- *
- * @example
- * ```ts
- * Err(new Error('boom')) // Result<never, Error>
- * ```
- */
-export function Err<T = never, E = never>(error: E): Result<T, E> {
-	return new ErrImpl(error);
-}
+/** The `Failure` type: a failed {@link Result}. */
+export type Failure<T, E = never> = FailureImpl<T, E>;

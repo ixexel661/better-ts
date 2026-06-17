@@ -1,6 +1,6 @@
 # better-ts
 
-Monorepo for **better-ts** — a better standard library for TypeScript.
+Monorepo for **better-ts**, a better standard library for TypeScript.
 Inspired by the Rust stdlib, Scala collections and the Kotlin stdlib. **Zero
 dependency.**
 
@@ -9,7 +9,7 @@ dependency.**
 | Package | Description |
 | --- | --- |
 | [`@better-ts/core`](./packages/core) | `Option`, `Result`, `Validated`, `NonEmptyArray`, `DeepReadonly`, `Immutable`, `Lazy`, `Brand`, `Iter` |
-| [`better-ts`](./packages/better-ts) | Meta package — re-exports `@better-ts/core` under the bare npm name |
+| [`better-ts`](./packages/better-ts) | Meta package that re-exports `@better-ts/core` under the bare npm name |
 | [`@better-ts/config`](./packages/config) | Shared TypeScript base config (`tsconfig.base.json`) |
 
 ## Why?

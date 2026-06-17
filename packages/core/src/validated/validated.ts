@@ -1,14 +1,9 @@
-import {
-	isNonEmpty,
-	mapNonEmpty,
-	type NonEmptyArray,
-} from "../non-empty-array/non-empty-array.js";
+import { NonEmptyArray } from "../non-empty-array/non-empty-array.js";
 import type { Option } from "../option/option.js";
-import type { Result } from "../result/result.js";
-import { Err, Ok } from "../result/result.js";
+import { Result } from "../result/result.js";
 
 /**
- * Pattern for {@link Validated.match}.
+ * Handlers for {@link Validated.match}.
  */
 export interface ValidatedMatch<E, A, U> {
 	valid: (value: A) => U;
@@ -16,52 +11,53 @@ export interface ValidatedMatch<E, A, U> {
 }
 
 /**
- * Like {@link Result}, but **accumulates** errors instead of short-circuiting on
- * the first one (Cats `Validated`). Combining several validations collects every
- * error, which makes it ideal for form/input validation. The error channel is a
- * {@link NonEmptyArray} so an `Invalid` always carries at least one error.
+ * Like {@link Result}, but it **accumulates** errors instead of stopping at the
+ * first one (the Cats `Validated`). Combining several validations keeps every
+ * error, which is what you want for validating a form or a request. The error
+ * channel is a {@link NonEmptyArray}, so an invalid result always carries at
+ * least one error.
  *
  * @example
  * ```ts
  * Validated.all([validateName(n), validateAge(a)])
- * // Invalid(["name empty", "age < 0"]) — both errors, not just the first
+ * // invalid(["name empty", "age < 0"]): both errors, not just the first
  * ```
  */
 export abstract class Validated<E, A> {
-	/** Discriminator used to tell the variants apart. */
+	/** Discriminator that tells the two variants apart. */
 	abstract readonly _tag: "Valid" | "Invalid";
 
 	// --- Constructors / interop -------------------------------------------
 
-	/** Creates a {@link Valid}. */
+	/** Wraps a valid value. */
 	static valid<A, E = never>(value: A): Validated<E, A> {
 		return new ValidImpl(value);
 	}
 
-	/** Creates an {@link Invalid} with a single error. */
+	/** Wraps a single error as an invalid result. */
 	static invalid<E, A = never>(error: E): Validated<E, A> {
 		return new InvalidImpl([error]);
 	}
 
-	/** `Ok -> Valid`, `Err -> Invalid([error])`. */
+	/** A success becomes valid; a failure becomes invalid with that one error. */
 	static fromResult<E, A>(result: Result<A, E>): Validated<E, A> {
 		return result.match<Validated<E, A>>({
-			ok: (value) => new ValidImpl(value),
-			err: (error) => new InvalidImpl([error]),
+			success: (value) => new ValidImpl(value),
+			error: (error) => new InvalidImpl([error]),
 		});
 	}
 
-	/** `Some -> Valid`, `None -> Invalid([error])`. */
+	/** A present option becomes valid; an empty one becomes invalid with `error`. */
 	static fromOption<E, A>(option: Option<A>, error: E): Validated<E, A> {
 		return option.match<Validated<E, A>>({
-			some: (value) => new ValidImpl(value),
-			none: () => new InvalidImpl([error]),
+			value: (value) => new ValidImpl(value),
+			empty: () => new InvalidImpl([error]),
 		});
 	}
 
 	/**
-	 * Combines many validations, accumulating **all** errors. Returns
-	 * `Valid(values)` only when every input is valid.
+	 * Combines many validations, keeping **all** errors. Returns the list of
+	 * values only when every input is valid.
 	 */
 	static all<E, A>(validations: readonly Validated<E, A>[]): Validated<E, A[]> {
 		const values: A[] = [];
@@ -72,11 +68,13 @@ export abstract class Validated<E, A> {
 				invalid: (errs) => errors.push(...errs),
 			});
 		}
-		return isNonEmpty(errors) ? new InvalidImpl(errors) : new ValidImpl(values);
+		return NonEmptyArray.isNonEmpty(errors)
+			? new InvalidImpl(errors)
+			: new ValidImpl(values);
 	}
 
-	/** Combines two validations with `fn`, accumulating errors from both. */
-	static map2<E, A, B, C>(
+	/** Combines two validations with `fn`, keeping errors from both. */
+	static zipWith<E, A, B, C>(
 		va: Validated<E, A>,
 		vb: Validated<E, B>,
 		fn: (a: A, b: B) => C,
@@ -94,14 +92,14 @@ export abstract class Validated<E, A> {
 
 	// --- Transformation ---------------------------------------------------
 
-	/** Transforms the valid value; `Invalid` is left unchanged. */
+	/** Transforms the valid value; an invalid result is left unchanged. */
 	abstract map<B>(fn: (value: A) => B): Validated<E, B>;
 
-	/** Transforms every accumulated error; `Valid` is left unchanged. */
+	/** Transforms every accumulated error; a valid result is left unchanged. */
 	abstract mapErrors<F>(fn: (error: E) => F): Validated<F, A>;
 
 	/**
-	 * Combines with another validation. Both valid → `Valid([a, b])`; otherwise
+	 * Combines with another validation. Both valid produces `[a, b]`; otherwise
 	 * the errors of both sides are concatenated.
 	 */
 	zip<B>(other: Validated<E, B>): Validated<E, [A, B]> {
@@ -117,19 +115,25 @@ export abstract class Validated<E, A> {
 
 	// --- Extraction -------------------------------------------------------
 
-	/** Valid value or `fallback`. */
-	abstract getOrElse(fallback: A): A;
+	/**
+	 * Returns the valid value, or throws the accumulated errors.
+	 * @throws the contained `NonEmptyArray<E>` when invalid.
+	 */
+	abstract getOrThrow(): A;
 
-	/** Branches depending on the variant. */
+	/** Returns the valid value, or `onInvalid(errors)` when invalid. */
+	abstract getOrElse(onInvalid: (errors: NonEmptyArray<E>) => A): A;
+
+	/** Branches on the variant. */
 	abstract match<U>(cases: ValidatedMatch<E, A, U>): U;
 
 	// --- Interop → Result -------------------------------------------------
 
-	/** `Valid -> Ok(value)`, `Invalid -> Err(errors)`. */
+	/** Turns this into a `Result` with the errors on the failure side. */
 	abstract toResult(): Result<A, NonEmptyArray<E>>;
 }
 
-/** Success variant of {@link Validated}. */
+/** The valid variant of {@link Validated}. */
 class ValidImpl<E, A> extends Validated<E, A> {
 	override readonly _tag = "Valid" as const;
 
@@ -153,7 +157,11 @@ class ValidImpl<E, A> extends Validated<E, A> {
 		return this as unknown as Validated<F, A>;
 	}
 
-	override getOrElse(_fallback: A): A {
+	override getOrThrow(): A {
+		return this.value;
+	}
+
+	override getOrElse(_onInvalid: (errors: NonEmptyArray<E>) => A): A {
 		return this.value;
 	}
 
@@ -162,11 +170,11 @@ class ValidImpl<E, A> extends Validated<E, A> {
 	}
 
 	override toResult(): Result<A, NonEmptyArray<E>> {
-		return Ok(this.value);
+		return Result.success(this.value);
 	}
 }
 
-/** Failure variant of {@link Validated}; carries one or more errors. */
+/** The invalid variant of {@link Validated}; carries one or more errors. */
 class InvalidImpl<E, A> extends Validated<E, A> {
 	override readonly _tag = "Invalid" as const;
 
@@ -187,11 +195,15 @@ class InvalidImpl<E, A> extends Validated<E, A> {
 	}
 
 	override mapErrors<F>(fn: (error: E) => F): Validated<F, A> {
-		return new InvalidImpl(mapNonEmpty(this.errors, fn));
+		return new InvalidImpl(NonEmptyArray.map(this.errors, fn));
 	}
 
-	override getOrElse(fallback: A): A {
-		return fallback;
+	override getOrThrow(): never {
+		throw this.errors;
+	}
+
+	override getOrElse<B>(onInvalid: (errors: NonEmptyArray<E>) => B): B {
+		return onInvalid(this.errors);
 	}
 
 	override match<U>(cases: ValidatedMatch<E, A, U>): U {
@@ -199,7 +211,7 @@ class InvalidImpl<E, A> extends Validated<E, A> {
 	}
 
 	override toResult(): Result<A, NonEmptyArray<E>> {
-		return Err(this.errors);
+		return Result.error(this.errors);
 	}
 }
 
@@ -208,27 +220,3 @@ export type Valid<A, E = never> = ValidImpl<E, A>;
 
 /** The `Invalid` type: a {@link Validated} that holds accumulated errors. */
 export type Invalid<E, A = never> = InvalidImpl<E, A>;
-
-/**
- * Creates a {@link Valid}.
- *
- * @example
- * ```ts
- * Valid(42) // Validated<never, number>
- * ```
- */
-export function Valid<A, E = never>(value: A): Validated<E, A> {
-	return new ValidImpl(value);
-}
-
-/**
- * Creates an {@link Invalid} with a single error.
- *
- * @example
- * ```ts
- * Invalid("name is required") // Validated<string, never>
- * ```
- */
-export function Invalid<E, A = never>(error: E): Validated<E, A> {
-	return new InvalidImpl([error]);
-}

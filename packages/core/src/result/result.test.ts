@@ -1,151 +1,159 @@
 import { describe, expect, it } from "vitest";
-import { Err, Ok, Result } from "./result.js";
+import { Result } from "./result.js";
 
 describe("Result", () => {
-	describe("Konstruktoren", () => {
-		it("Ok ist erfolgreich", () => {
-			const r = Ok(1);
-			expect(r.isOk()).toBe(true);
-			expect(r.isErr()).toBe(false);
+	describe("Constructors", () => {
+		it("success is successful", () => {
+			const r = Result.success(1);
+			expect(r.isSuccess()).toBe(true);
+			expect(r.isError()).toBe(false);
 		});
 
-		it("Err ist fehlerhaft", () => {
-			const r = Err("boom");
-			expect(r.isErr()).toBe(true);
-			expect(r.isOk()).toBe(false);
+		it("error is a failure", () => {
+			const r = Result.error("boom");
+			expect(r.isError()).toBe(true);
+			expect(r.isSuccess()).toBe(false);
 		});
 	});
 
 	describe("tryCatch", () => {
-		it("fängt Erfolg", () => {
+		it("catches success", () => {
 			const r = Result.tryCatch(() => JSON.parse('{"a":1}'));
-			expect(r.isOk()).toBe(true);
+			expect(r.isSuccess()).toBe(true);
 		});
 
-		it("fängt geworfene Fehler als Err", () => {
+		it("catches thrown errors as a failure", () => {
 			const r = Result.tryCatch(() => JSON.parse("{invalid"));
-			expect(r.isErr()).toBe(true);
+			expect(r.isError()).toBe(true);
 		});
 	});
 
 	describe("fromPromise", () => {
-		it("resolve -> Ok", async () => {
+		it("resolve -> success", async () => {
 			const r = await Result.fromPromise(Promise.resolve(42));
-			expect(r.unwrap()).toBe(42);
+			expect(r.getOrThrow()).toBe(42);
 		});
 
-		it("reject -> Err", async () => {
+		it("reject -> error", async () => {
 			const r = await Result.fromPromise(Promise.reject(new Error("x")));
-			expect(r.isErr()).toBe(true);
-			expect((r.unwrapErr() as Error).message).toBe("x");
+			expect(r.isError()).toBe(true);
+			expect((r.getErrorOrThrow() as Error).message).toBe("x");
 		});
 	});
 
 	describe("fromNullable", () => {
-		it("Wert -> Ok, null/undefined -> Err", () => {
-			expect(Result.fromNullable(0, "e").isOk()).toBe(true);
-			expect(Result.fromNullable(null, "e").unwrapErr()).toBe("e");
-			expect(Result.fromNullable(undefined, "e").isErr()).toBe(true);
+		it("a value -> success, null/undefined -> error", () => {
+			expect(Result.fromNullable(0, "e").isSuccess()).toBe(true);
+			expect(Result.fromNullable(null, "e").getErrorOrThrow()).toBe("e");
+			expect(Result.fromNullable(undefined, "e").isError()).toBe(true);
 		});
 	});
 
 	describe("Transformation", () => {
-		it("map transformiert nur Ok", () => {
+		it("map transforms only success", () => {
 			expect(
-				Ok<number, string>(2)
+				Result.success<number, string>(2)
 					.map((x) => x + 1)
-					.unwrap(),
+					.getOrThrow(),
 			).toBe(3);
 			expect(
-				Err<number, string>("e")
+				Result.error<number, string>("e")
 					.map((x) => x + 1)
-					.isErr(),
+					.isError(),
 			).toBe(true);
 		});
 
-		it("mapErr transformiert nur Err", () => {
+		it("mapErr transforms only the error", () => {
 			expect(
-				Err<number, string>("e")
+				Result.error<number, string>("e")
 					.mapErr((e) => `${e}!`)
-					.unwrapErr(),
+					.getErrorOrThrow(),
 			).toBe("e!");
 			expect(
-				Ok<number, string>(1)
+				Result.success<number, string>(1)
 					.mapErr((e) => `${e}!`)
-					.isOk(),
+					.isSuccess(),
 			).toBe(true);
 		});
 
-		it("flatMap / andThen verkettet", () => {
+		it("flatMap chains", () => {
 			const positive = (n: number): Result<number, string> =>
-				n > 0 ? Ok(n) : Err("not positive");
-			expect(Ok<number, string>(5).andThen(positive).unwrap()).toBe(5);
-			expect(Ok<number, string>(-1).andThen(positive).unwrapErr()).toBe(
-				"not positive",
-			);
+				n > 0 ? Result.success(n) : Result.error("not positive");
+			expect(
+				Result.success<number, string>(5).flatMap(positive).getOrThrow(),
+			).toBe(5);
+			expect(
+				Result.success<number, string>(-1).flatMap(positive).getErrorOrThrow(),
+			).toBe("not positive");
 		});
 
 		it("tap / tapErr", () => {
 			let ok = 0;
 			let err = "";
-			Ok<number, string>(3).tap((x) => (ok = x));
-			Err<number, string>("e").tapErr((e) => (err = e));
+			Result.success<number, string>(3).tap((x) => (ok = x));
+			Result.error<number, string>("e").tapErr((e) => (err = e));
 			expect(ok).toBe(3);
 			expect(err).toBe("e");
 		});
 	});
 
-	describe("Extraktion", () => {
-		it("unwrap wirft den Fehler bei Err", () => {
-			expect(() => Err(new Error("nope")).unwrap()).toThrow("nope");
+	describe("Extraction", () => {
+		it("getOrThrow throws the error on a failure", () => {
+			expect(() => Result.error(new Error("nope")).getOrThrow()).toThrow(
+				"nope",
+			);
 		});
 
-		it("unwrapErr wirft bei Ok", () => {
-			expect(() => Ok(1).unwrapErr()).toThrow(/Ok/);
+		it("getErrorOrThrow throws on success", () => {
+			expect(() => Result.success(1).getErrorOrThrow()).toThrow(/success/);
 		});
 
-		it("unwrapOr / unwrapOrElse", () => {
-			expect(Err<number, string>("e").unwrapOr(9)).toBe(9);
-			expect(Err<number, string>("e").unwrapOrElse((e) => e.length)).toBe(1);
-			expect(Ok<number, string>(1).unwrapOr(9)).toBe(1);
+		it("getOrElse", () => {
+			expect(Result.error<number, string>("e").getOrElse(() => 9)).toBe(9);
+			expect(Result.error<number, string>("e").getOrElse((e) => e.length)).toBe(
+				1,
+			);
+			expect(Result.success<number, string>(1).getOrElse(() => 9)).toBe(1);
 		});
 
-		it("match verzweigt", () => {
+		it("match branches", () => {
 			const fmt = (r: Result<number, string>) =>
-				r.match({ ok: (x) => `ok:${x}`, err: (e) => `err:${e}` });
-			expect(fmt(Ok(1))).toBe("ok:1");
-			expect(fmt(Err("boom"))).toBe("err:boom");
+				r.match({ success: (x) => `ok:${x}`, error: (e) => `err:${e}` });
+			expect(fmt(Result.success(1))).toBe("ok:1");
+			expect(fmt(Result.error("boom"))).toBe("err:boom");
 		});
 	});
 
 	describe("Interop -> Option", () => {
-		it("ok(): Ok -> Some, Err -> None", () => {
-			expect(Ok<number, string>(1).ok().unwrap()).toBe(1);
-			expect(Err<number, string>("e").ok().isNone()).toBe(true);
+		it("toOption: success -> value, error -> empty", () => {
+			expect(Result.success<number, string>(1).toOption().getOrThrow()).toBe(1);
+			expect(Result.error<number, string>("e").toOption().isEmpty()).toBe(true);
 		});
 
-		it("err(): Err -> Some, Ok -> None", () => {
-			expect(Err<number, string>("e").err().unwrap()).toBe("e");
-			expect(Ok<number, string>(1).err().isNone()).toBe(true);
+		it("getError: error -> value, success -> empty", () => {
+			expect(Result.error<number, string>("e").getError().getOrThrow()).toBe(
+				"e",
+			);
+			expect(Result.success<number, string>(1).getError().isEmpty()).toBe(true);
 		});
 	});
 
 	describe("Narrowing", () => {
-		it("isOk erlaubt Zugriff auf .value", () => {
-			const r: Result<number, string> = Ok(7);
-			if (r.isOk()) {
+		it("isSuccess allows access to .value", () => {
+			const r: Result<number, string> = Result.success(7);
+			if (r.isSuccess()) {
 				expect(r.value).toBe(7);
 			} else {
-				throw new Error("sollte Ok sein");
+				throw new Error("should be a success");
 			}
 		});
 
-		it("isErr erlaubt Zugriff auf .error", () => {
-			const r: Result<number, string> = Err("e");
-			if (r.isErr()) {
+		it("isError allows access to .error", () => {
+			const r: Result<number, string> = Result.error("e");
+			if (r.isError()) {
 				expect(r.error).toBe("e");
 			} else {
-				throw new Error("sollte Err sein");
+				throw new Error("should be a failure");
 			}
 		});
 	});

@@ -1,7 +1,7 @@
 /**
- * Makes a type recursively readonly — unlike `Readonly<T>`, which only affects
- * the top level. Arrays, `Map` and `Set` become their `Readonly` variants;
- * functions and primitives are left unchanged.
+ * Makes a type recursively readonly. `Readonly<T>` only affects the top level;
+ * this goes all the way down. Arrays, `Map` and `Set` turn into their `Readonly`
+ * variants, while functions and primitives stay as they are.
  *
  * @example
  * ```ts
@@ -61,7 +61,7 @@ function freezeRec<T>(value: T, seen: WeakSet<object>): T {
 
 /**
  * The single source of truth for which nested values a container holds.
- * Adding support for another container kind only requires a branch here — the
+ * Adding support for another container kind only requires a branch here. The
  * traversal in {@link freezeRec} stays agnostic.
  */
 function* nestedValues(value: object): Iterable<unknown> {

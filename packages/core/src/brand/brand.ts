@@ -1,22 +1,21 @@
-import type { Option } from "../option/option.js";
-import { None, Some } from "../option/option.js";
+import { Option } from "../option/option.js";
 
-// Phantom brand carrier — declared, never emitted, not exported, so a branded
+// Phantom brand carrier: declared, never emitted, not exported, so a branded
 // value can only be produced through the constructors below.
 declare const brandTag: unique symbol;
 
 /**
  * A nominal ("newtype") version of `T`, tagged with `B`. A `Brand<string, "UserId">`
- * is assignable to `string`, but a plain `string` is NOT assignable to it — so
- * illegal values become unrepresentable (Rust newtype / Scala `opaque type`).
+ * is still assignable to `string`, but a plain `string` is not assignable back to
+ * it, so illegal values cannot be represented (Rust newtype, Scala `opaque type`).
  *
  * @example
  * ```ts
  * type UserId = Brand<string, "UserId">
- * const UserId = brand<UserId>()
+ * const UserId = Brand.nominal<UserId>()
  * const id = UserId("u_1") // UserId
  * fn(id)      // ok
- * fn("u_1")   // type error — not branded
+ * fn("u_1")   // type error: not branded
  * ```
  */
 export type Brand<T, B extends string | symbol> = T & {
@@ -33,37 +32,49 @@ export type Unbrand<B> = B extends {
 	: B;
 
 /**
- * Creates a smart constructor for a branded type. The constructor is the
- * identity at runtime; it only adds the nominal tag at the type level.
+ * Builds a smart constructor for a branded type. At runtime it is the identity;
+ * it only adds the nominal tag at the type level.
  *
  * @example
  * ```ts
  * type Email = Brand<string, "Email">
- * const Email = brand<Email>()
+ * const Email = Brand.nominal<Email>()
  * const e = Email("a@b.de") // Email
  * ```
  */
-export function brand<B extends Brand<unknown, string | symbol>>(): (
+function nominal<B extends Brand<unknown, string | symbol>>(): (
 	value: Unbrand<B>,
 ) => B {
 	return (value) => value as B;
 }
 
 /**
- * Creates a *validating* smart constructor: returns `Some(branded)` when
- * `predicate` holds, otherwise `None`. Pairs the nominal guarantee with a
- * runtime check.
+ * Builds a *validating* smart constructor: it returns the branded value when
+ * `predicate` holds, otherwise an empty `Option`. Pairs the nominal guarantee
+ * with a runtime check.
  *
  * @example
  * ```ts
  * type Even = Brand<number, "Even">
- * const Even = refine<Even>((n) => n % 2 === 0)
- * Even(4) // Some(4 as Even)
- * Even(3) // None
+ * const Even = Brand.refine<Even>((n) => n % 2 === 0)
+ * Even(4) // Option.value(4 as Even)
+ * Even(3) // Option.empty()
  * ```
  */
-export function refine<B extends Brand<unknown, string | symbol>>(
+function refine<B extends Brand<unknown, string | symbol>>(
 	predicate: (value: Unbrand<B>) => boolean,
 ): (value: Unbrand<B>) => Option<B> {
-	return (value) => (predicate(value) ? Some(value as B) : None());
+	return (value) =>
+		predicate(value) ? Option.value(value as B) : Option.empty();
 }
+
+/**
+ * Helpers for {@link Brand}.
+ *
+ * - `nominal` — an unchecked smart constructor (identity at runtime).
+ * - `refine` — a validating smart constructor returning an `Option`.
+ */
+export const Brand = {
+	nominal,
+	refine,
+};

@@ -1,14 +1,13 @@
-import type { Option } from "../option/option.js";
-import { None, Some } from "../option/option.js";
+import { Option } from "../option/option.js";
 
 /**
- * A lazy, chainable iterator pipeline over any `Iterable<T>` — like Rust's
+ * A lazy, chainable iterator pipeline over any `Iterable<T>`, like Rust's
  * `Iterator` or Scala's `LazyList`. Transformations build a new pipeline without
- * allocating intermediate arrays; work happens only when a terminal operation
- * (e.g. {@link IterImpl.toArray}) pulls values.
+ * allocating intermediate arrays; the work happens only when a terminal
+ * operation such as {@link IterImpl.toArray} pulls values through.
  *
- * Re-iterable: as long as the underlying source is re-iterable (arrays are), an
- * `Iter` can be consumed more than once.
+ * An `Iter` can be consumed more than once, as long as the underlying source is
+ * itself re-iterable (arrays are).
  *
  * @example
  * ```ts
@@ -16,7 +15,7 @@ import { None, Some } from "../option/option.js";
  *   .map((x) => x * 2)
  *   .filter((x) => x > 4)
  *   .take(2)
- *   .toArray() // [6, 8] — only as many elements as needed are processed
+ *   .toArray() // [6, 8]; only as many elements as needed are processed
  * ```
  */
 class IterImpl<T> implements Iterable<T> {
@@ -94,8 +93,8 @@ class IterImpl<T> implements Iterable<T> {
 		});
 	}
 
-	/** Pairs each element with its index. */
-	enumerate(): Iter<[number, T]> {
+	/** Pairs each element with its index, like `Array.entries`. */
+	entries(): Iter<[number, T]> {
 		const source = this.source;
 		return lazy(function* () {
 			let index = 0;
@@ -143,27 +142,29 @@ class IterImpl<T> implements Iterable<T> {
 		return new Set(this);
 	}
 
-	/** Left fold over all elements. */
-	fold<B>(initial: B, fn: (acc: B, value: T) => B): B {
-		let acc = initial;
-		for (const value of this) {
-			acc = fn(acc, value);
-		}
-		return acc;
-	}
-
-	/** Reduces without a seed; `None` for an empty pipeline. */
-	reduce(fn: (acc: T, value: T) => T): Option<T> {
+	/** Reduces without a seed; empty when the pipeline has no elements. */
+	reduce(fn: (acc: T, value: T) => T): Option<T>;
+	/** Reduces with a seed, like `Array.reduce(fn, initial)`. */
+	reduce<B>(fn: (acc: B, value: T) => B, initial: B): B;
+	reduce<B>(fn: (acc: B, value: T) => B, ...rest: [B] | []): B | Option<T> {
 		const iterator = this[Symbol.iterator]();
+		if (rest.length === 1) {
+			let acc = rest[0];
+			for (let next = iterator.next(); !next.done; next = iterator.next()) {
+				acc = fn(acc, next.value);
+			}
+			return acc;
+		}
 		const first = iterator.next();
 		if (first.done) {
-			return None();
+			return Option.empty<T>();
 		}
+		const step = fn as unknown as (acc: T, value: T) => T;
 		let acc = first.value;
 		for (let next = iterator.next(); !next.done; next = iterator.next()) {
-			acc = fn(acc, next.value);
+			acc = step(acc, next.value);
 		}
-		return Some(acc);
+		return Option.value(acc);
 	}
 
 	/** Runs `fn` for every element (side effect). */
@@ -203,23 +204,23 @@ class IterImpl<T> implements Iterable<T> {
 		return true;
 	}
 
-	/** First element matching `pred`, as an {@link Option}. */
+	/** The first element matching `pred`, as an {@link Option}. */
 	find(pred: (value: T, index: number) => boolean): Option<T> {
 		let index = 0;
 		for (const value of this) {
 			if (pred(value, index++)) {
-				return Some(value);
+				return Option.value(value);
 			}
 		}
-		return None();
+		return Option.empty();
 	}
 
 	/** The first element, as an {@link Option}. */
 	first(): Option<T> {
 		for (const value of this) {
-			return Some(value);
+			return Option.value(value);
 		}
-		return None();
+		return Option.empty();
 	}
 }
 
@@ -245,18 +246,18 @@ export function Iter<T>(source: Iterable<T>): Iter<T> {
 
 /**
  * A lazy numeric range `[start, end)` with an optional `step` (defaults to `1`,
- * may be negative for descending ranges).
+ * and may be negative for a descending range).
  *
  * @example
  * ```ts
- * range(0, 5).toArray()       // [0, 1, 2, 3, 4]
- * range(10, 0, -2).toArray()  // [10, 8, 6, 4, 2]
+ * Iter.range(0, 5).toArray()       // [0, 1, 2, 3, 4]
+ * Iter.range(10, 0, -2).toArray()  // [10, 8, 6, 4, 2]
  * ```
  */
-export function range(start: number, end: number, step = 1): Iter<number> {
+Iter.range = (start: number, end: number, step = 1): Iter<number> => {
 	return lazy(function* () {
 		if (step === 0) {
-			throw new Error("range() step must not be zero");
+			throw new Error("Iter.range() step must not be zero");
 		}
 		if (step > 0) {
 			for (let i = start; i < end; i += step) {
@@ -268,4 +269,4 @@ export function range(start: number, end: number, step = 1): Iter<number> {
 			}
 		}
 	});
-}
+};

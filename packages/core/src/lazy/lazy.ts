@@ -1,13 +1,13 @@
 /**
- * A deferred, memoized computation — like Scala's `lazy val`. The thunk runs at
- * most once, on the first {@link Lazy.get}; the result is cached and returned on
- * every subsequent call.
+ * A deferred, memoized computation, like Scala's `lazy val`. The thunk runs at
+ * most once, on the first {@link Lazy.get}. After that the result is cached and
+ * returned on every later call.
  *
  * @example
  * ```ts
  * const config = Lazy(() => expensiveParse())
  * config.get() // runs expensiveParse() once
- * config.get() // cached — no recomputation
+ * config.get() // returns the cached value
  * config.map((c) => c.port) // still lazy
  * ```
  */
@@ -37,7 +37,7 @@ class LazyImpl<T> {
 		return this.evaluated;
 	}
 
-	/** Maps the eventual value lazily — `fn` runs only when {@link get} is called. */
+	/** Maps the eventual value lazily. `fn` runs only when {@link get} is called. */
 	map<U>(fn: (value: T) => U): Lazy<U> {
 		return new LazyImpl(() => fn(this.get()));
 	}

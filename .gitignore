@@ -60,3 +60,5 @@ Thumbs.db
 # Package manager artifacts / publish output
 *.tgz
 .npmrc.local
+
+.claude

@@ -7,7 +7,7 @@
  */
 
 // Brand
-export { type Brand, brand, refine, type Unbrand } from "./brand/brand.js";
+export { Brand, type Unbrand } from "./brand/brand.js";
 // DeepReadonly
 export {
 	type DeepReadonly,
@@ -16,39 +16,32 @@ export {
 // Immutable
 export { type Immutable, immutable } from "./immutable/immutable.js";
 // Iter
-export { Iter, range } from "./iter/iter.js";
+export { Iter } from "./iter/iter.js";
 // Lazy
 export { Lazy } from "./lazy/lazy.js";
 // NonEmptyArray
 export {
-	head,
-	isNonEmpty,
-	last,
-	mapNonEmpty,
-	type NonEmptyArray,
-	nonEmpty,
-	of,
+	NonEmptyArray,
 	type ReadonlyNonEmptyArray,
-	tail,
 } from "./non-empty-array/non-empty-array.js";
 // Option
 export {
-	None,
+	type Empty,
 	Option,
 	type OptionMatch,
-	Some,
+	type Value,
 } from "./option/option.js";
 // Result
 export {
-	Err,
-	Ok,
+	type Failure,
 	Result,
 	type ResultMatch,
+	type Success,
 } from "./result/result.js";
 // Validated
 export {
-	Invalid,
-	Valid,
+	type Invalid,
+	type Valid,
 	Validated,
 	type ValidatedMatch,
 } from "./validated/validated.js";

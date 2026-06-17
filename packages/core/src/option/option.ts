@@ -1,45 +1,44 @@
-import type { Result } from "../result/result.js";
-import { Err, Ok } from "../result/result.js";
+import { Result } from "../result/result.js";
 
 /**
- * Pattern for {@link Option.match}.
+ * Handlers for {@link Option.match}.
  */
 export interface OptionMatch<T, U> {
-	some: (value: T) => U;
-	none: () => U;
+	value: (value: T) => U;
+	empty: () => U;
 }
 
 /**
- * A container that either holds a value ({@link Some}) or is empty
- * ({@link None}). A type-safe alternative to `T | undefined` that reduces null
- * errors.
+ * A container that either holds a value ({@link Value}) or is empty
+ * ({@link Empty}). A type-safe alternative to `T | undefined` that keeps null
+ * checks out of your business logic.
  *
  * @example
  * ```ts
  * const name = findUser(id)        // Option<User>
  *   .map((u) => u.name)
  *   .filter((n) => n.length > 0)
- *   .unwrapOr('anonymous')
+ *   .getOrElse(() => "anonymous")
  * ```
  */
 export abstract class Option<T> {
-	/** Discriminator used to tell the variants apart. */
-	abstract readonly _tag: "Some" | "None";
+	/** Discriminator that tells the two variants apart. */
+	abstract readonly _tag: "Value" | "Empty";
 
 	// --- Constructors / interop -------------------------------------------
 
-	/** Creates a {@link Some} holding the given value. */
-	static some<T>(value: T): Option<T> {
-		return new SomeImpl(value);
+	/** Wraps a present value. */
+	static value<T>(value: T): Option<T> {
+		return new ValueImpl(value);
 	}
 
-	/** Returns the shared {@link None}. */
-	static none<T = never>(): Option<T> {
-		return NONE as Option<T>;
+	/** Returns the shared empty option. */
+	static empty<T = never>(): Option<T> {
+		return EMPTY as Option<T>;
 	}
 
 	/**
-	 * Returns `None` for `null`/`undefined`, otherwise `Some(value)`.
+	 * Returns an empty option for `null`/`undefined`, otherwise wraps the value.
 	 *
 	 * @example
 	 * ```ts
@@ -48,32 +47,27 @@ export abstract class Option<T> {
 	 */
 	static fromNullable<T>(value: T | null | undefined): Option<NonNullable<T>> {
 		return value === null || value === undefined
-			? (NONE as Option<NonNullable<T>>)
-			: new SomeImpl(value as NonNullable<T>);
+			? (EMPTY as Option<NonNullable<T>>)
+			: new ValueImpl(value as NonNullable<T>);
 	}
 
 	// --- Type guards ------------------------------------------------------
 
-	/** `true` when a value is present (narrows to {@link Some}). */
-	abstract isSome(): this is Some<T>;
+	/** `true` when a value is present (narrows to {@link Value}). */
+	abstract hasValue(): this is Value<T>;
 
-	/** `true` when no value is present (narrows to {@link None}). */
-	abstract isNone(): this is None;
+	/** `true` when the option is empty (narrows to {@link Empty}). */
+	abstract isEmpty(): this is Empty;
 
 	// --- Transformation ---------------------------------------------------
 
-	/** Applies `fn` to the contained value; `None` stays `None`. */
+	/** Applies `fn` to the contained value; an empty option stays empty. */
 	abstract map<U>(fn: (value: T) => U): Option<U>;
 
 	/** Like {@link map}, but `fn` returns an `Option` itself. */
 	abstract flatMap<U>(fn: (value: T) => Option<U>): Option<U>;
 
-	/** Alias for {@link flatMap}. */
-	andThen<U>(fn: (value: T) => Option<U>): Option<U> {
-		return this.flatMap(fn);
-	}
-
-	/** Keeps the value only when `pred` returns `true`; otherwise `None`. */
+	/** Keeps the value only when `pred` returns `true`, otherwise empties it. */
 	abstract filter(pred: (value: T) => boolean): Option<T>;
 
 	/** Runs `fn` for the value (side effect) and returns `this`. */
@@ -82,53 +76,47 @@ export abstract class Option<T> {
 	// --- Extraction -------------------------------------------------------
 
 	/**
-	 * Returns the value or throws if `None`.
-	 * @throws {Error} when the option is `None`.
+	 * Returns the value, or throws when the option is empty.
+	 * @throws {Error} when the option is empty.
 	 */
-	abstract unwrap(): T;
+	abstract getOrThrow(): T;
 
-	/** Returns the value or `fallback`. */
-	abstract unwrapOr(fallback: T): T;
+	/** Returns the value, or the result of `onEmpty` when empty. */
+	abstract getOrElse(onEmpty: () => T): T;
 
-	/** Returns the value or the result of `fn`. */
-	abstract unwrapOrElse(fn: () => T): T;
+	/** Returns the value, or `null` when empty. */
+	abstract getOrNull(): T | null;
 
-	/** Value or `null`. */
-	abstract toNullable(): T | null;
+	/** Returns the value, or `undefined` when empty. */
+	abstract getOrUndefined(): T | undefined;
 
-	/** Value or `undefined`. */
-	abstract toUndefined(): T | undefined;
-
-	/** Branches depending on the variant. */
+	/** Branches on the variant. */
 	abstract match<U>(cases: OptionMatch<T, U>): U;
 
 	// --- Interop → Result -------------------------------------------------
 
-	/** Converts to `Result`: `Some -> Ok`, `None -> Err(error)`. */
-	abstract okOr<E>(error: E): Result<T, E>;
-
-	/** Like {@link okOr}, but the error is computed lazily. */
-	abstract okOrElse<E>(fn: () => E): Result<T, E>;
+	/** Turns the option into a `Result`, using `onEmpty` for the error case. */
+	abstract toResult<E>(onEmpty: () => E): Result<T, E>;
 }
 
-/** Variant of {@link Option} that holds a value. */
-class SomeImpl<T> extends Option<T> {
-	override readonly _tag = "Some" as const;
+/** The variant of {@link Option} that holds a value. */
+class ValueImpl<T> extends Option<T> {
+	override readonly _tag = "Value" as const;
 
 	constructor(readonly value: T) {
 		super();
 	}
 
-	override isSome(): this is Some<T> {
+	override hasValue(): this is Value<T> {
 		return true;
 	}
 
-	override isNone(): this is None {
+	override isEmpty(): this is Empty {
 		return false;
 	}
 
 	override map<U>(fn: (value: T) => U): Option<U> {
-		return new SomeImpl(fn(this.value));
+		return new ValueImpl(fn(this.value));
 	}
 
 	override flatMap<U>(fn: (value: T) => Option<U>): Option<U> {
@@ -136,7 +124,7 @@ class SomeImpl<T> extends Option<T> {
 	}
 
 	override filter(pred: (value: T) => boolean): Option<T> {
-		return pred(this.value) ? this : (NONE as Option<T>);
+		return pred(this.value) ? this : (EMPTY as Option<T>);
 	}
 
 	override tap(fn: (value: T) => void): this {
@@ -144,48 +132,40 @@ class SomeImpl<T> extends Option<T> {
 		return this;
 	}
 
-	override unwrap(): T {
+	override getOrThrow(): T {
 		return this.value;
 	}
 
-	override unwrapOr(_fallback: T): T {
+	override getOrElse(_onEmpty: () => T): T {
 		return this.value;
 	}
 
-	override unwrapOrElse(_fn: () => T): T {
+	override getOrNull(): T | null {
 		return this.value;
 	}
 
-	override toNullable(): T | null {
-		return this.value;
-	}
-
-	override toUndefined(): T | undefined {
+	override getOrUndefined(): T | undefined {
 		return this.value;
 	}
 
 	override match<U>(cases: OptionMatch<T, U>): U {
-		return cases.some(this.value);
+		return cases.value(this.value);
 	}
 
-	override okOr<E>(_error: E): Result<T, E> {
-		return Ok(this.value);
-	}
-
-	override okOrElse<E>(_fn: () => E): Result<T, E> {
-		return Ok(this.value);
+	override toResult<E>(_onEmpty: () => E): Result<T, E> {
+		return Result.success(this.value);
 	}
 }
 
-/** Variant of {@link Option} that holds no value. */
-class NoneImpl extends Option<never> {
-	override readonly _tag = "None" as const;
+/** The empty variant of {@link Option}. */
+class EmptyImpl extends Option<never> {
+	override readonly _tag = "Empty" as const;
 
-	override isSome(): this is Some<never> {
+	override hasValue(): this is Value<never> {
 		return false;
 	}
 
-	override isNone(): this is None {
+	override isEmpty(): this is Empty {
 		return true;
 	}
 
@@ -205,68 +185,36 @@ class NoneImpl extends Option<never> {
 		return this;
 	}
 
-	override unwrap(): never {
-		throw new Error("Option.unwrap() called on None");
+	override getOrThrow(): never {
+		throw new Error("Option.getOrThrow() called on an empty Option");
 	}
 
-	override unwrapOr<U>(fallback: U): U {
-		return fallback;
+	override getOrElse<U>(onEmpty: () => U): U {
+		return onEmpty();
 	}
 
-	override unwrapOrElse<U>(fn: () => U): U {
-		return fn();
-	}
-
-	override toNullable(): null {
+	override getOrNull(): null {
 		return null;
 	}
 
-	override toUndefined(): undefined {
+	override getOrUndefined(): undefined {
 		return undefined;
 	}
 
 	override match<U>(cases: OptionMatch<never, U>): U {
-		return cases.none();
+		return cases.empty();
 	}
 
-	override okOr<E>(error: E): Result<never, E> {
-		return Err(error);
-	}
-
-	override okOrElse<E>(fn: () => E): Result<never, E> {
-		return Err(fn());
+	override toResult<E>(onEmpty: () => E): Result<never, E> {
+		return Result.error(onEmpty());
 	}
 }
 
-/** The `Some` type: an {@link Option} that is guaranteed to hold a value. */
-export type Some<T> = SomeImpl<T>;
+/** The `Value` type: an {@link Option} that is guaranteed to hold a value. */
+export type Value<T> = ValueImpl<T>;
 
-/** The `None` type: an empty {@link Option}. */
-export type None = NoneImpl;
+/** The `Empty` type: an {@link Option} that holds no value. */
+export type Empty = EmptyImpl;
 
-/** Shared singleton instance of `None`. */
-const NONE: NoneImpl = new NoneImpl();
-
-/**
- * Creates a {@link Some}.
- *
- * @example
- * ```ts
- * Some(42) // Option<number>
- * ```
- */
-export function Some<T>(value: T): Option<T> {
-	return new SomeImpl(value);
-}
-
-/**
- * Returns the shared {@link None}.
- *
- * @example
- * ```ts
- * None<number>() // Option<number>
- * ```
- */
-export function None<T = never>(): Option<T> {
-	return NONE as Option<T>;
-}
+/** Shared singleton instance of the empty option. */
+const EMPTY: EmptyImpl = new EmptyImpl();

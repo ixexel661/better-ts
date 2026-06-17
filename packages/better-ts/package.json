@@ -1,7 +1,7 @@
 {
 	"name": "better-ts",
 	"version": "0.0.1",
-	"description": "A better standard library for TypeScript — meta package that re-exports @better-ts/core",
+	"description": "A better standard library for TypeScript meta package that re-exports @better-ts/core",
 	"type": "module",
 	"sideEffects": false,
 	"license": "MIT",
