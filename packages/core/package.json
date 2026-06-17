@@ -1,0 +1,47 @@
+{
+	"name": "@better-ts/core",
+	"version": "0.0.1",
+	"description": "A better standard library for TypeScript: Option, Result, NonEmptyArray, DeepReadonly",
+	"type": "module",
+	"sideEffects": false,
+	"license": "MIT",
+	"engines": {
+		"node": ">=20"
+	},
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"types": "./dist/index.d.ts",
+	"module": "./dist/index.js",
+	"keywords": [
+		"typescript",
+		"option",
+		"result",
+		"maybe",
+		"non-empty-array",
+		"deep-readonly",
+		"stdlib",
+		"functional"
+	],
+	"scripts": {
+		"build": "tsdown",
+		"taze": "taze",
+		"prepublishOnly": "taze && tsdown",
+		"dev": "tsdown --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"devDependencies": {
+		"@better-ts/config": "workspace:*"
+	}
+}

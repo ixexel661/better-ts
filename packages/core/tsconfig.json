@@ -1,0 +1,12 @@
+{
+	"extends": "@better-ts/config/tsconfig.base.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist",
+		"composite": true,
+		"tsBuildInfoFile": "./dist/.tsbuildinfo",
+		"types": ["vitest/globals"]
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["dist", "node_modules"]
+}

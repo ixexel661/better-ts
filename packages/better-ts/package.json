@@ -1,0 +1,46 @@
+{
+	"name": "better-ts",
+	"version": "0.0.1",
+	"description": "A better standard library for TypeScript — meta package that re-exports @better-ts/core",
+	"type": "module",
+	"sideEffects": false,
+	"license": "MIT",
+	"engines": {
+		"node": ">=20"
+	},
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"types": "./dist/index.d.ts",
+	"module": "./dist/index.js",
+	"keywords": [
+		"typescript",
+		"option",
+		"result",
+		"non-empty-array",
+		"deep-readonly",
+		"stdlib"
+	],
+	"scripts": {
+		"build": "tsdown",
+		"taze": "taze",
+		"prepublishOnly": "taze && tsdown",
+		"dev": "tsdown --watch",
+		"typecheck": "tsc --noEmit"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"dependencies": {
+		"@better-ts/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@better-ts/config": "workspace:*"
+	}
+}

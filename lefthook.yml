@@ -1,0 +1,18 @@
+# https://github.com/evilmartians/lefthook
+pre-commit:
+  parallel: true
+  commands:
+    check:
+      run: pnpm check
+    deps:
+      run: pnpm taze
+
+pre-push:
+  parallel: true
+  commands:
+    check:
+      run: pnpm check
+    test:
+      run: pnpm test
+    deps:
+      run: pnpm taze

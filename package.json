@@ -1,0 +1,52 @@
+{
+	"name": "@better-ts/workspace",
+	"version": "0.0.1",
+	"description": "A better standard library for TypeScript",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"prepare": "lefthook install",
+		"build": "pnpm -r build",
+		"dev": "pnpm -r --parallel dev",
+		"test": "pnpm -r test",
+		"typecheck": "pnpm -r typecheck",
+		"lint": "biome lint .",
+		"format": "biome format --write .",
+		"check": "biome check .",
+		"check:fix": "biome check --write .",
+		"taze": "taze",
+		"prepublishOnly": "taze && pnpm -r build",
+		"release": "bumpp -r"
+	},
+	"keywords": [
+		"typescript",
+		"option",
+		"result",
+		"stdlib",
+		"non-empty-array",
+		"deep-readonly"
+	],
+	"author": "",
+	"license": "MIT",
+	"engines": {
+		"node": ">=20"
+	},
+	"devEngines": {
+		"packageManager": {
+			"name": "pnpm",
+			"version": "11.7.0",
+			"onFail": "download"
+		}
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.5.0",
+		"@types/node": "^25.9.3",
+		"bumpp": "^11.1.0",
+		"knip": "^6.17.1",
+		"lefthook": "^2.1.9",
+		"taze": "^19.14.1",
+		"tsdown": "^0.22.2",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.9"
+	}
+}
