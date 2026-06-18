@@ -10,10 +10,13 @@ standard libraries. ESM only.
 - The git base branch is `master`.
 - Use `pnpm` as the package manager. It is pinned via `devEngines`, so `npm` and
   `npx` fail with `EBADDEVENGINES`; reach for `pnpm` or `pnpm dlx` instead.
-- It is a pnpm workspace monorepo. The packages live under `packages/*`:
-  - `@better-ts/core` holds all the types.
-  - `better-ts` is a meta package that re-exports core under the bare npm name.
-  - `@better-ts/config` holds the shared `tsconfig.base.json`.
+- It is a pnpm workspace monorepo with three top-level groups:
+  - `packages/*` holds the libraries: `@better-ts/core` (all the types),
+    `better-ts` (a meta package re-exporting core under the bare npm name), and
+    `@better-ts/config` (the shared `tsconfig.base.json`).
+  - `examples/*` holds small, runnable example packages that consume
+    `@better-ts/core`. Run one with `pnpm --filter @example/<name> start`.
+  - `apps/*` holds standalone apps, currently the `doc` site.
 
 ### Core principles
 

@@ -1,0 +1,11 @@
+{
+	"extends": "@better-ts/config/tsconfig.base.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"types": ["node"],
+		"paths": {
+			"@better-ts/core": ["../../packages/core/src/index"]
+		}
+	},
+	"include": ["src/**/*.ts"]
+}

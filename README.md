@@ -1,5 +1,7 @@
 # better-ts
 
+[![CI](https://github.com/ixexel661/better-ts/actions/workflows/ci.yml/badge.svg)](https://github.com/ixexel661/better-ts/actions/workflows/ci.yml)
+
 Monorepo for **better-ts**, a better standard library for TypeScript.
 Inspired by the Rust stdlib, Scala collections and the Kotlin stdlib. **Zero
 dependency.**
@@ -26,6 +28,15 @@ TypeScript ships with surprisingly few data types (`string`, `number`,
 - **`Lazy<T>`** → deferred, memoized computation (Scala `lazy val`)
 - **`Brand<T, B>`** → nominal newtypes with smart constructors (Rust newtype, Scala `opaque type`)
 - **`Iter<T>`** → lazy iterator pipeline without intermediate arrays (Rust `Iterator`)
+
+## Examples
+
+Runnable examples live in [examples/](./examples), one package per topic. Run one
+with:
+
+```bash
+pnpm --filter @example/option-result start
+```
 
 ## Development
 

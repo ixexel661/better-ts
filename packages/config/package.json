@@ -2,6 +2,7 @@
 	"name": "@better-ts/config",
 	"version": "0.0.1",
 	"description": "Shared TypeScript and tsdown configuration for the better-ts monorepo",
+	"private": true,
 	"type": "module",
 	"license": "MIT",
 	"files": [
@@ -12,9 +13,6 @@
 		"./tsconfig.base.json": "./tsconfig.base.json",
 		"./tsdown.base": "./tsdown.base.ts",
 		"./package.json": "./package.json"
-	},
-	"publishConfig": {
-		"access": "public"
 	},
 	"peerDependencies": {
 		"tsdown": ">=0.22.0"

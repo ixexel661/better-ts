@@ -1,0 +1,40 @@
+---
+title: better-ts
+description: A better standard library for TypeScript. Zero dependency, ESM only.
+template: splash
+hero:
+  tagline: The data types TypeScript left out. Option, Result, Validated and more, with no dependencies.
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/ixexel661/better-ts
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+TypeScript ships with `string`, `number`, `Array`, `Map`, `Set`, and not much
+else. better-ts fills the gaps with the building blocks you reach for in Rust,
+Scala and Kotlin, rewritten for TypeScript and shipped with zero dependencies.
+
+<CardGrid>
+	<Card title="Option">
+		A typed stand-in for `T | undefined`, so a missing value stays in the type
+		instead of surfacing as a runtime null error. [Read more](/types/option/).
+	</Card>
+	<Card title="Result">
+		Errors that travel in the return type instead of through `throw`, so the
+		caller can see what might go wrong. [Read more](/types/result/).
+	</Card>
+	<Card title="Validated">
+		Like `Result`, but it collects every error instead of stopping at the first.
+		Built for form and request validation. [Read more](/types/validated/).
+	</Card>
+	<Card title="Iter">
+		A lazy iterator pipeline that skips the intermediate arrays and stops as soon
+		as it has what you asked for. [Read more](/types/iter/).
+	</Card>
+</CardGrid>

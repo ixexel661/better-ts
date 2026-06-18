@@ -6,7 +6,13 @@
 		"useIgnoreFile": false
 	},
 	"files": {
-		"includes": ["**", "!**/dist", "!**/node_modules"],
+		"includes": [
+			"**",
+			"!**/dist",
+			"!**/node_modules",
+			"!**/.astro",
+			"!**/*.svg"
+		],
 		"ignoreUnknown": false
 	},
 	"formatter": {

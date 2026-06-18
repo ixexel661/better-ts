@@ -5,6 +5,12 @@
 	"type": "module",
 	"sideEffects": false,
 	"license": "MIT",
+	"author": "ixexel661",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/ixexel661/better-ts.git",
+		"directory": "packages/better-ts"
+	},
 	"engines": {
 		"node": ">=20"
 	},

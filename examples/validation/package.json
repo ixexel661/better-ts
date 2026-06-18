@@ -1,0 +1,19 @@
+{
+	"name": "@example/validation",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"description": "Example: Validated, Brand and NonEmptyArray from @better-ts/core",
+	"scripts": {
+		"start": "tsx src/main.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@better-ts/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@better-ts/config": "workspace:*",
+		"@types/node": "^25.9.3",
+		"tsx": "^4.19.0"
+	}
+}
