@@ -1,6 +1,6 @@
 {
 	"name": "@better-ts/core",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "A better standard library for TypeScript: Option, Result, NonEmptyArray, DeepReadonly",
 	"type": "module",
 	"sideEffects": false,

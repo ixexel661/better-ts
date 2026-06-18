@@ -1,6 +1,6 @@
 {
 	"name": "@better-ts/config",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"description": "Shared TypeScript and tsdown configuration for the better-ts monorepo",
 	"private": true,
 	"type": "module",

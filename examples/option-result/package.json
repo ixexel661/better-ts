@@ -1,6 +1,6 @@
 {
 	"name": "@example/option-result",
-	"version": "0.0.1",
+	"version": "0.0.2",
 	"private": true,
 	"type": "module",
 	"description": "Example: Option and Result from @better-ts/core",
