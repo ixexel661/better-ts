@@ -16,6 +16,9 @@ concurrency:
 env:
   # Matches devEngines.packageManager in package.json.
   PNPM_VERSION: 11.7.0
+  # Node used for tooling (check, build) and for installing deps. pnpm 11
+  # needs Node >= 22.13, and 26.3.0 is the newest version we target.
+  NODE_VERSION: "26.3.0"
 
 jobs:
   check:
@@ -28,7 +31,7 @@ jobs:
           version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
@@ -43,7 +46,7 @@ jobs:
           version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Build first: better-ts resolves @better-ts/core from its dist, so
@@ -63,9 +66,16 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: ${{ env.PNPM_VERSION }}
+      # Install with a Node that pnpm supports (pnpm 11 does not run on Node 20).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Switch to the target Node and run the suite directly, so the library
+      # itself is exercised on the version we want to support.
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test
+      - run: node --version
+      - run: ./node_modules/.bin/vitest run
